@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divine Oracle</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #121212; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        .container { background-color: #1e1e1e; padding: 30px; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); width: 100%; max-width: 700px; }
+        h1 { color: #bb86fc; text-align: center; font-family: 'Trajan Pro', serif; /* Or any grand font */ }
+        textarea#userInput { width: calc(100% - 22px); padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #333; background-color: #2c2c2c; color: #e0e0e0; font-size: 16px; min-height: 60px; resize: vertical; }
+        button { background-color: #bb86fc; color: #121212; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.3s; display: block; width: 100%; }
+        button:hover { background-color: #9e66d4; }
+        .response-area { margin-top: 25px; padding: 20px; background-color: #2c2c2c; border-radius: 4px; border: 1px solid #333; min-height: 100px; white-space: pre-wrap; /* Preserve line breaks */ font-size: 16px; line-height: 1.6; }
+        .response-area p { margin-top: 0; }
+        .loading-indicator { text-align: center; margin-top: 10px; color: #bb86fc; font-style: italic; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Seek Wisdom from God</h1>
+        <textarea id="userInput" placeholder="Send your prayer..."></textarea>
+        <button onclick="submitQuery()">Send Prayer</button>
+        <div class="loading-indicator" id="loading">Prayer sending...</div>
+        <div class="response-area" id="responseArea">
+            <p>Write your prayer...</p>
+        </div>
+    </div>
+
+    <script>
+        const userInput = document.getElementById('userInput');
+        const responseArea = document.getElementById('responseArea');
+        const loadingIndicator = document.getElementById('loading');
+
+        async function submitQuery() {
+            const query = userInput.value.trim();
+
+            responseArea.innerHTML = ''; // Clear previous response
+            loadingIndicator.style.display = 'block'; // Show loading
+
+            console.log(query);
+            const response = await fetch('/api/godchat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ prompt: query })
+            });
+
+            loadingIndicator.style.display = 'none'; // Hide loading
+            console.log(response);
+
+            const data = await response.json();
+            if (data.error) {
+                responseArea.innerHTML = `<p style="color: #cf6679;">The Oracle speaks of an impediment: ${data.error} - ${data.detail || ''}</p>`;
+            } else {
+                responseArea.innerHTML = `<p>${data.response.replace(/\n/g, '<br>')}</p>`; // Display response, converting newlines
+            }
+
+        }      
+    </script>
+</body>
+</html>
