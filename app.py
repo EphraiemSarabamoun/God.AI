@@ -46,6 +46,6 @@ def god_chat_endpoint():
     return jsonify({"response": god_response})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=False) 
+    app.run(host='0.0.0.0', port=8080, debug=True) 
 
 # TODO: Add logic to prevent multiple prayers at once.

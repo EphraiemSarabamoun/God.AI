@@ -52,7 +52,7 @@
 
             const data = await response.json();
             if (data.error) {
-                responseArea.innerHTML = `<p style="color: #cf6679;">The Oracle speaks of an impediment: ${data.error} - ${data.detail || ''}</p>`;
+                responseArea.innerHTML = `<p style="color: #cf6679;">Response Failed: ${data.error} - ${data.detail || ''}</p>`;
             } else {
                 responseArea.innerHTML = `<p>${data.response.replace(/\n/g, '<br>')}</p>`; // Display response, converting newlines
             }
