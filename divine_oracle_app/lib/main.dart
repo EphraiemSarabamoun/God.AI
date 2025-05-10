@@ -64,7 +64,7 @@ class _OracleHomePageState extends State<OracleHomePage> {
   // If running Flask locally and testing on Android emulator: 'http://10.0.2.2:8080/api/godchat'
   // If running Flask locally and testing on iOS simulator: 'http://localhost:8080/api/godchat'
   // If backend is deployed: 'https://your-deployed-api-url.com/api/godchat'
-  final String _apiUrl = 'http://localhost:8080/api/godchat'; 
+  final String _apiUrl = 'http://192.168.1.158:8080/api/godchat'; 
 
   Future<void> _submitQuery() async {
     final query = _userInputController.text.trim();
