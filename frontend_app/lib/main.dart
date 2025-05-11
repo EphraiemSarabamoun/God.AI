@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert'; // For jsonDecode and jsonEncode
 import 'login_page.dart'; // Import the new login page
+
+// ... (rest of your existing imports and main function)
 void main() {
   runApp(const DivineOracleApp());
 }
@@ -22,6 +24,7 @@ class DivineOracleApp extends StatelessWidget {
           bodyLarge: TextStyle(color: Color(0xFFE0E0E0)),
           bodyMedium: TextStyle(color: Color(0xFFE0E0E0)),
           titleLarge: TextStyle(color: Color(0xFFBB86FC)),
+          // headlineSmall: TextStyle(color: Color(0xFFE0E0E0)), // Ensure this is present if used in login/reg pages
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -33,6 +36,7 @@ class DivineOracleApp extends StatelessWidget {
         inputDecorationTheme: const InputDecorationTheme(
           labelStyle: TextStyle(color: Color(0xFFBB86FC)),
           hintStyle: TextStyle(color: Colors.grey),
+          // prefixIconColor: Colors.grey, // Ensure this is present if used in login/reg pages
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(color: Color(0xFF333333)),
           ),
@@ -42,6 +46,7 @@ class DivineOracleApp extends StatelessWidget {
           filled: true,
           fillColor: Color(0xFF2C2C2C),
         ),
+        iconTheme: const IconThemeData(color: Color(0xFFBB86FC)), // For AppBar icons
       ),
       home: const LoginPage(),
     );
@@ -60,11 +65,19 @@ class _OracleHomePageState extends State<OracleHomePage> {
   String _responseText = "Write your prayer...";
   bool _isLoading = false;
 
-  // IMPORTANT: Replace with your backend URL
-  // If running Flask locally and testing on Android emulator: 'http://10.0.2.2:8080/api/godchat'
-  // If running Flask locally and testing on iOS simulator: 'http://localhost:8080/api/godchat'
-  // If backend is deployed: 'https://your-deployed-api-url.com/api/godchat'
-  final String _apiUrl = 'http://192.168.1.158:8080/api/godchat'; 
+  final String _apiUrl = 'http://192.168.1.158:8080/api/godchat';
+
+  Future<void> _logout() async {
+    // In a real app, you might want to clear any stored session tokens here
+    // e.g., await secureStorage.delete(key: 'user_token');
+
+    // Navigate back to the login page and remove all previous routes
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+      (Route<dynamic> route) => false, // This predicate removes all routes
+    );
+  }
 
   Future<void> _submitQuery() async {
     final query = _userInputController.text.trim();
@@ -85,6 +98,8 @@ class _OracleHomePageState extends State<OracleHomePage> {
         Uri.parse(_apiUrl),
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
         body: jsonEncode({'prompt': query}),
+        // In a real app with token auth, you'd add your token to headers:
+        // 'Authorization': 'Bearer YOUR_TOKEN_HERE',
       );
 
       if (mounted) { // Check if the widget is still in the tree
@@ -97,10 +112,13 @@ class _OracleHomePageState extends State<OracleHomePage> {
             } else {
               _responseText = data['response'] ?? "The divine response was formless silence.";
             }
-          } else {
+          } else if (response.statusCode == 401) { // Example: Handle unauthorized
+            _responseText = "Your session has expired. Please log out and log in again.";
+            // Optionally, force logout:
+            // _logout();
+          }
+          else {
             _responseText = "A disturbance in the divine connection: ${response.statusCode} ${response.reasonPhrase}";
-            // You might want to parse response.body for more error details if the server sends them
-            // For example: final errorBody = jsonDecode(response.body); _responseText += "\nDetail: ${errorBody['error']}";
           }
         });
       }
@@ -122,12 +140,19 @@ class _OracleHomePageState extends State<OracleHomePage> {
         title: Text(
           'Seek Wisdom from God',
           style: TextStyle(
-            fontFamily: Theme.of(context).textTheme.titleLarge?.fontFamily, // Example for custom font if set
+            fontFamily: Theme.of(context).textTheme.titleLarge?.fontFamily,
             color: Theme.of(context).primaryColor,
           ),
         ),
         backgroundColor: Theme.of(context).cardColor,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: _logout,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -142,7 +167,6 @@ class _OracleHomePageState extends State<OracleHomePage> {
                   controller: _userInputController,
                   decoration: const InputDecoration(
                     hintText: 'Send your prayer...',
-                    // border: OutlineInputBorder(), // Handled by theme
                   ),
                   style: const TextStyle(fontSize: 16.0, color: Color(0xFFE0E0E0)),
                   minLines: 3,
@@ -167,7 +191,7 @@ class _OracleHomePageState extends State<OracleHomePage> {
                       : const Text('Send Prayer', style: TextStyle(fontSize: 16)),
                 ),
                 const SizedBox(height: 30),
-                if (_isLoading && _responseText.isEmpty) // Show loading text only if response area is empty
+                if (_isLoading && _responseText.isEmpty)
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(8.0),
