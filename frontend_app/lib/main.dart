@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert'; // For jsonDecode and jsonEncode
-
+import 'login_page.dart'; // Import the new login page
 void main() {
   runApp(const DivineOracleApp());
 }
@@ -43,7 +43,7 @@ class DivineOracleApp extends StatelessWidget {
           fillColor: Color(0xFF2C2C2C),
         ),
       ),
-      home: const OracleHomePage(),
+      home: const LoginPage(),
     );
   }
 }

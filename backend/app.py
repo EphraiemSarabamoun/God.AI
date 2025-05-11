@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 
 # Attempt to import the function from your God-Workflow.py file
-from God_Workflow import generate_god_like_response # Assuming filename is God_Workflow.py
+from backend.God_Workflow import generate_god_like_response # Assuming filename is God_Workflow.py
 
 # --- Flask App Setup ---
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
