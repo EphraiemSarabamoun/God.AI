@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart'; // To navigate back to LoginPage after registration
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+// import 'login_page.dart'; // Can be used if you want to navigate explicitly
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -15,31 +18,51 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
 
-  void _register() {
+  // Replace with your actual backend URL
+  final String _registerApiUrl = 'http://192.168.1.158:8080/api/register'; // e.g., 'https://api.yourapp.com/register'
+
+
+  Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
+        _errorMessage = null;
       });
 
-      // Simulate a network request or registration logic
-      Future.delayed(const Duration(seconds: 2), () {
+      try {
+        final response = await http.post(
+          Uri.parse(_registerApiUrl),
+          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          body: jsonEncode({
+            'username': _usernameController.text,
+            'email': _emailController.text, // Send email if your backend expects it
+            'password': _passwordController.text,
+          }),
+        );
+
+        if (!mounted) return;
+
+        if (response.statusCode == 201 || response.statusCode == 200) { // 201 Created or 200 OK
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Registration successful! Please login.')),
+          );
+          Navigator.pop(context); // Go back to login page
+        } else {
+          final responseData = jsonDecode(response.body);
+          setState(() {
+            _errorMessage = responseData['message'] ?? 'Registration failed. Please try again.';
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        if (!mounted) return;
         setState(() {
+          _errorMessage = 'An error occurred: ${e.toString()}';
           _isLoading = false;
         });
-        // In a real app, you would send data to your backend here
-        // For now, let's assume registration is successful
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful! Please login.')),
-        );
-        // Navigate back to the login page
-        Navigator.pop(context); // Pops the current page (RegistrationPage)
-        // Or, if you want to ensure they go to login page even if it wasn't the previous one:
-        // Navigator.pushReplacement(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => const LoginPage()),
-        // );
-      });
+      }
     }
   }
 
@@ -78,7 +101,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10.0),
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 14),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _usernameController,
                     decoration: const InputDecoration(

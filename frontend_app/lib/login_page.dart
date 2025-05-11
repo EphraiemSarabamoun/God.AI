@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http; // Make sure http is imported
+import 'dart:convert'; // For jsonEncode and jsonDecode
+
 import 'main.dart'; // To navigate to OracleHomePage
 import 'registration_page.dart'; // Import the new registration page
 
@@ -14,25 +17,56 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
 
-  void _login() {
+  // Replace with your actual backend URL
+  final String _loginApiUrl = 'http://192.168.1.158:8080/api/login'; // e.g., 'https://api.yourapp.com/login'
+
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
+        _errorMessage = null;
       });
 
-      // Simulate a network request or authentication logic
-      Future.delayed(const Duration(seconds: 2), () {
+      try {
+        final response = await http.post(
+          Uri.parse(_loginApiUrl),
+          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          body: jsonEncode({
+            'username': _usernameController.text,
+            'password': _passwordController.text,
+          }),
+        );
+
+        if (!mounted) return; // Check if the widget is still in the tree
+
+        if (response.statusCode == 200) {
+          // Login successful
+          // final responseData = jsonDecode(response.body);
+          // You might receive a token here to store for session management
+          // String? token = responseData['token'];
+          // await saveToken(token); // Example function to save token
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const OracleHomePage()),
+          );
+        } else {
+          // Login failed
+          final responseData = jsonDecode(response.body);
+          setState(() {
+            _errorMessage = responseData['message'] ?? 'Login failed. Please try again.';
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        if (!mounted) return;
         setState(() {
+          _errorMessage = 'An error occurred: ${e.toString()}';
           _isLoading = false;
         });
-        // For now, let's assume login is always successful
-        // In a real app, you would verify credentials here
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const OracleHomePage()),
-        );
-      });
+      }
     }
   }
 
@@ -47,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login to Divine Oracle'),
+        title: const Text('Login to God.Ai'),
         centerTitle: true,
       ),
       body: Center(
@@ -62,14 +96,24 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   Text(
-                    'Welcome',
+                    'Welcome Back',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10.0),
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 14),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _usernameController,
                     decoration: const InputDecoration(
@@ -117,9 +161,9 @@ class _LoginPageState extends State<LoginPage> {
                           )
                         : const Text('Login', style: TextStyle(fontSize: 16)),
                   ),
-                  const SizedBox(height: 20), // Added space
+                  const SizedBox(height: 20),
                   TextButton(
-                    onPressed: () {
+                    onPressed: _isLoading ? null : () { // Disable while loading
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const RegistrationPage()),
@@ -130,7 +174,6 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(color: Theme.of(context).primaryColor),
                     ),
                   ),
-                  // Add "Forgot Password?" or "Sign Up" buttons here if needed
                 ],
               ),
             ),
