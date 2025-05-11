@@ -3,6 +3,8 @@ from flask_cors import CORS
 import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime       
+from flask_jwt_extended import create_access_token, jwt_required, JWTManager, get_jwt_identity
 
 # Attempt to import the function from your God-Workflow.py file
 from God_Workflow import generate_god_like_response # Assuming filename is God_Workflow.py
@@ -36,7 +38,10 @@ def create_schema_if_not_exists():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL
+                password_hash TEXT NOT NULL,
+                monthly_query_count INTEGER DEFAULT 0 NOT NULL,
+                last_query_month TEXT,
+                is_subscribed INTEGER DEFAULT 0 NOT NULL
             );
             """)
         print("schema.sql created. Please run the app again to initialize the database if it's the first time.")
@@ -44,7 +49,9 @@ def create_schema_if_not_exists():
 # --- Flask App Setup ---
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
-app.config['DATABASE'] = DATABASE # For convenience, though not strictly used by get_db directly
+app.config['DATABASE'] = DATABASE
+app.config["JWT_SECRET_KEY"] = "your-super-secret-key-change-this-immediately"  # Change this!
+jwt = JWTManager(app)
 CORS(app)  # Enable CORS for all routes
 CONVERSATION_HISTORY = [] # WARNING: This will be shared among all users. Needs to be user-specific in a real multi-user app.
 
@@ -115,37 +122,76 @@ def login():
     cursor.close()
 
     if user and check_password_hash(user['password_hash'], password):
-        # In a real app, you'd generate a session token (JWT) here
-        return jsonify({"message": "Login successful"}), 200 # Optionally return user info or token
+        access_token = create_access_token(identity=user['id'])
+        return jsonify(access_token=access_token, message="Login successful"), 200
     else:
         return jsonify({"message": "Invalid username or password"}), 401
 
 
 @app.route('/api/godchat', methods=['POST'])
 def god_chat_endpoint():
-    # IMPORTANT: This endpoint is currently NOT protected.
-    # Any client can call it without logging in.
-    # You would need to implement token-based authentication or session management
-    # to protect this route and associate CONVERSATION_HISTORY with specific users.
+
     global CONVERSATION_HISTORY
+    
+    user_id = get_jwt_identity()
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT id, monthly_query_count, last_query_month, is_subscribed FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    current_month_str = datetime.utcnow().strftime('%Y-%m')
+    monthly_query_count = user['monthly_query_count']
+    
+    # Reset monthly count if it's a new month
+    if user['last_query_month'] != current_month_str:
+        monthly_query_count = 0
+        # No need to update last_query_month here yet, will be updated after successful query or if limit hit
+
+    if not user['is_subscribed'] and monthly_query_count >= 20:
+        # Update last_query_month even if limit is hit, to ensure reset logic works next month
+        cursor.execute("UPDATE users SET last_query_month = ? WHERE id = ?", (current_month_str, user_id))
+        db.commit()
+        cursor.close()
+        return jsonify({
+            "message": "You have used all your 20 free prayers for this month. Please upgrade for unlimited access.",
+            "limit_reached": True,
+            "remaining_free_queries": 0
+        }), 402 # 402 Payment Required
+
     data = request.get_json()
-    print(f"Received data: {data}")
-    user_prompt = data.get('prompt', '').strip() # Use .get for safety
+    user_prompt = data.get('prompt', '').strip()
 
     if not user_prompt:
+        cursor.close()
         return jsonify({"error": "Prompt cannot be empty"}), 400
         
-    # ... (rest of your godchat logic) ...
-    # For demonstration, let's assume it continues as before
-    # The model_name parameter in generate_god_like_response is currently illustrative
-    # as get_ollama_response_simple in your God-Workflow.py hardcodes 'llama3:70b'
     god_response = generate_god_like_response(user_prompt, CONVERSATION_HISTORY)
     CONVERSATION_HISTORY.append({"user": user_prompt, "god": god_response})
     MAX_HISTORY_TURNS = 10 
     if len(CONVERSATION_HISTORY) > MAX_HISTORY_TURNS:
         CONVERSATION_HISTORY = CONVERSATION_HISTORY[-MAX_HISTORY_TURNS:]
+
+    # Increment query count and update last query month
+    new_monthly_query_count = monthly_query_count + 1
+    cursor.execute("UPDATE users SET monthly_query_count = ?, last_query_month = ? WHERE id = ?",
+                   (new_monthly_query_count, current_month_str, user_id))
+    db.commit()
+    cursor.close()
+    
+    remaining_queries = None
+    if not user['is_subscribed']:
+        remaining_queries = 20 - new_monthly_query_count
+        if remaining_queries < 0: remaining_queries = 0 # Should not happen if limit check is correct
+
     print(f"God-like response: {god_response}")
-    return jsonify({"response": god_response})
+    response_data = {"response": god_response}
+    if remaining_queries is not None:
+        response_data["remaining_free_queries"] = remaining_queries
+    return jsonify(response_data)
+
 
 if __name__ == '__main__':
     create_schema_if_not_exists() # Create schema.sql if it doesn't exist

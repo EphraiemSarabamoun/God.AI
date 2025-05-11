@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert'; // For jsonDecode and jsonEncode
 import 'login_page.dart'; // Import the new login page
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Import secure storage
 
 // ... (rest of your existing imports and main function)
 void main() {
@@ -64,12 +65,18 @@ class _OracleHomePageState extends State<OracleHomePage> {
   final TextEditingController _userInputController = TextEditingController();
   String _responseText = "Write your prayer...";
   bool _isLoading = false;
+  final _storage = const FlutterSecureStorage(); // Instance of secure storage
+
 
   final String _apiUrl = 'http://192.168.1.158:8080/api/godchat';
 
+  // Helper function to get the stored token
+  Future<String?> _getAuthToken() async {
+    return await _storage.read(key: 'auth_token');
+  }
+
   Future<void> _logout() async {
-    // In a real app, you might want to clear any stored session tokens here
-    // e.g., await secureStorage.delete(key: 'user_token');
+     await _storage.delete(key: 'auth_token'); // Delete token on logout
 
     // Navigate back to the login page and remove all previous routes
     Navigator.pushAndRemoveUntil(
@@ -92,11 +99,24 @@ class _OracleHomePageState extends State<OracleHomePage> {
       _isLoading = true;
       _responseText = ""; // Clear previous response
     });
+    String? token = await _getAuthToken();
+    if (token == null) {
+      setState(() {
+        _isLoading = false;
+        _responseText = "Authentication error. Please log in again.";
+        // Optionally, force logout or navigate to login
+        // _logout(); 
+      });
+      return;
+    }
 
     try {
       final response = await http.post(
         Uri.parse(_apiUrl),
-        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',// Use the retrieved token
+            },
         body: jsonEncode({'prompt': query}),
         // In a real app with token auth, you'd add your token to headers:
         // 'Authorization': 'Bearer YOUR_TOKEN_HERE',
@@ -115,7 +135,13 @@ class _OracleHomePageState extends State<OracleHomePage> {
           } else if (response.statusCode == 401) { // Example: Handle unauthorized
             _responseText = "Your session has expired. Please log out and log in again.";
             // Optionally, force logout:
+            // await _storage.delete(key: 'auth_token'); // Clear invalid token
             // _logout();
+          }
+          else if (response.statusCode == 402) { // Payment Required / Limit Reached
+            final data = jsonDecode(response.body);
+             _responseText = data['message'] ?? "You've reached your query limit.";
+            // _limitReachedAndNotSubscribed = true; // Update UI accordingly
           }
           else {
             _responseText = "A disturbance in the divine connection: ${response.statusCode} ${response.reasonPhrase}";
