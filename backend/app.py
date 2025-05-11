@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
@@ -6,7 +5,7 @@ import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Attempt to import the function from your God-Workflow.py file
-from backend.God_Workflow import generate_god_like_response # Assuming filename is God_Workflow.py
+from God_Workflow import generate_god_like_response # Assuming filename is God_Workflow.py
 
 # --- Database Setup ---
 DATABASE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'users.db')
