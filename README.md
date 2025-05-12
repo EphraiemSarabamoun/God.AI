@@ -1,7 +1,7 @@
 # God.AI
 This is a fun project where I use a 70b local Llama3 model to simulate God in an app.
 
-Demo Video: (https://www.youtube.com/shorts/GxjlWMH2p1M)
+Demo Video: https://www.youtube.com/shorts/GxjlWMH2p1M
 
 ## Project Structure
 
