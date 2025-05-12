@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert'; // For jsonDecode and jsonEncode
-import 'login_page.dart'; // Import the new login page
+import 'dart:convert'; 
+import 'login_page.dart'; 
 
-// ... (rest of your existing imports and main function)
 void main() {
   runApp(const DivineOracleApp());
 }
@@ -24,7 +23,7 @@ class DivineOracleApp extends StatelessWidget {
           bodyLarge: TextStyle(color: Color(0xFFE0E0E0)),
           bodyMedium: TextStyle(color: Color(0xFFE0E0E0)),
           titleLarge: TextStyle(color: Color(0xFFBB86FC)),
-          // headlineSmall: TextStyle(color: Color(0xFFE0E0E0)), // Ensure this is present if used in login/reg pages
+          headlineSmall: TextStyle(color: Color(0xFFE0E0E0)),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -36,7 +35,6 @@ class DivineOracleApp extends StatelessWidget {
         inputDecorationTheme: const InputDecorationTheme(
           labelStyle: TextStyle(color: Color(0xFFBB86FC)),
           hintStyle: TextStyle(color: Colors.grey),
-          // prefixIconColor: Colors.grey, // Ensure this is present if used in login/reg pages
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(color: Color(0xFF333333)),
           ),
@@ -68,14 +66,10 @@ class _OracleHomePageState extends State<OracleHomePage> {
   final String _apiUrl = 'http://192.168.1.158:8080/api/godchat';
 
   Future<void> _logout() async {
-    // In a real app, you might want to clear any stored session tokens here
-    // e.g., await secureStorage.delete(key: 'user_token');
-
-    // Navigate back to the login page and remove all previous routes
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const LoginPage()),
-      (Route<dynamic> route) => false, // This predicate removes all routes
+      (Route<dynamic> route) => false,
     );
   }
 
@@ -90,7 +84,7 @@ class _OracleHomePageState extends State<OracleHomePage> {
 
     setState(() {
       _isLoading = true;
-      _responseText = ""; // Clear previous response
+      _responseText = "";
     });
 
     try {
@@ -98,11 +92,9 @@ class _OracleHomePageState extends State<OracleHomePage> {
         Uri.parse(_apiUrl),
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
         body: jsonEncode({'prompt': query}),
-        // In a real app with token auth, you'd add your token to headers:
-        // 'Authorization': 'Bearer YOUR_TOKEN_HERE',
       );
 
-      if (mounted) { // Check if the widget is still in the tree
+      if (mounted) { 
         setState(() {
           _isLoading = false;
           if (response.statusCode == 200) {

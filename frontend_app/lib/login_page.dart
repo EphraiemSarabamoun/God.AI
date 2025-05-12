@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http; // Make sure http is imported
-import 'dart:convert'; // For jsonEncode and jsonDecode
+import 'package:http/http.dart' as http; 
+import 'dart:convert'; 
 
-import 'main.dart'; // To navigate to OracleHomePage
-import 'registration_page.dart'; // Import the new registration page
-
+import 'main.dart'; 
+import 'registration_page.dart'; 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -39,14 +38,9 @@ class _LoginPageState extends State<LoginPage> {
           }),
         );
 
-        if (!mounted) return; // Check if the widget is still in the tree
+        if (!mounted) return; 
 
         if (response.statusCode == 200) {
-          // Login successful
-          // final responseData = jsonDecode(response.body);
-          // You might receive a token here to store for session management
-          // String? token = responseData['token'];
-          // await saveToken(token); // Example function to save token
 
           Navigator.pushReplacement(
             context,

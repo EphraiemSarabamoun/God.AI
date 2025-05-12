@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// import 'login_page.dart'; // Can be used if you want to navigate explicitly
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -20,7 +19,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Replace with your actual backend URL
   final String _registerApiUrl = 'http://192.168.1.158:8080/api/register'; // e.g., 'https://api.yourapp.com/register'
 
 
@@ -37,18 +35,18 @@ class _RegistrationPageState extends State<RegistrationPage> {
           headers: {'Content-Type': 'application/json; charset=UTF-8'},
           body: jsonEncode({
             'username': _usernameController.text,
-            'email': _emailController.text, // Send email if your backend expects it
+            'email': _emailController.text, 
             'password': _passwordController.text,
           }),
         );
 
         if (!mounted) return;
 
-        if (response.statusCode == 201 || response.statusCode == 200) { // 201 Created or 200 OK
+        if (response.statusCode == 201 || response.statusCode == 200) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Registration successful! Please login.')),
           );
-          Navigator.pop(context); // Go back to login page
+          Navigator.pop(context);
         } else {
           final responseData = jsonDecode(response.body);
           setState(() {
