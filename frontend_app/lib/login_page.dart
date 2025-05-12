@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http; 
 import 'dart:convert'; 
 
+
 import 'main.dart'; 
 import 'registration_page.dart'; 
 class LoginPage extends StatefulWidget {
@@ -15,60 +16,60 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _storage = const FlutterSecureStorage();
   bool _isLoading = false;
   String? _errorMessage;
+  // Helper function to save the token
+  Future<void> _saveAuthToken(String token) async {
+    await _storage.write(key: 'auth_token', value: token);
+  }
+  Future<void> _loginUser() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
-  // Replace with your actual backend URL
-  final String _loginApiUrl = 'http://192.168.1.158:8080/api/login'; // e.g., 'https://api.yourapp.com/login'
+    final username = _usernameController.text;
+    final password = _passwordController.text;
 
-  Future<void> _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+    // Replace with your actual login API endpoint
+    final String loginApiUrl = 'http://192.168.1.158:8080/api/login'; 
 
-      try {
+
+    try {
         final response = await http.post(
-          Uri.parse(_loginApiUrl),
+          Uri.parse(loginApiUrl),
           headers: {'Content-Type': 'application/json; charset=UTF-8'},
-          body: jsonEncode({
-            'username': _usernameController.text,
-            'password': _passwordController.text,
-          }),
+          body: jsonEncode({'username': username, 'password': password}),
         );
+  
+      setState(() { _isLoading = false; });
 
         if (!mounted) return; 
 
         if (response.statusCode == 200) {
+
 
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const OracleHomePage()),
           );
         } else {
-          // Login failed
-          final responseData = jsonDecode(response.body);
-          setState(() {
-            _errorMessage = responseData['message'] ?? 'Login failed. Please try again.';
-            _isLoading = false;
-          });
+          setState(() { _errorMessage = "Login successful, but no token received."; });
         }
-      } catch (e) {
-        if (!mounted) return;
+      } else {
+        final data = jsonDecode(response.body);
         setState(() {
-          _errorMessage = 'An error occurred: ${e.toString()}';
-          _isLoading = false;
+          _errorMessage = data['message'] ?? 'Login failed. Please try again.';
         });
       }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Error connecting to server: $e';
+      });
+      print("Login error: $e");
     }
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override
@@ -140,7 +141,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
+                    onPressed: _isLoading ? null : _loginUser,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 15),
                     ),

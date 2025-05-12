@@ -3,6 +3,8 @@ from flask_cors import CORS
 import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime       
+from flask_jwt_extended import create_access_token, jwt_required, JWTManager, get_jwt_identity
 
 from God_Workflow import generate_god_like_response
 
@@ -33,16 +35,21 @@ def create_schema_if_not_exists():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL
+                password_hash TEXT NOT NULL,
+                monthly_query_count INTEGER DEFAULT 0 NOT NULL,
+                last_query_month TEXT,
+                is_subscribed INTEGER DEFAULT 0 NOT NULL
             );
             """)
         print("schema.sql created. Please run the app again to initialize the database if it's the first time.")
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
+
 app.config['DATABASE'] = DATABASE 
 CORS(app)  
 CONVERSATION_HISTORY = [] 
+
 
 from flask import g
 
@@ -106,19 +113,54 @@ def login():
     cursor.close()
 
     if user and check_password_hash(user['password_hash'], password):
+
         return jsonify({"message": "Login successful"}), 200 
+
     else:
         return jsonify({"message": "Invalid username or password"}), 401
 
 
 @app.route('/api/godchat', methods=['POST'])
 def god_chat_endpoint():
+
+
     global CONVERSATION_HISTORY
+    
+    user_id = get_jwt_identity()
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT id, monthly_query_count, last_query_month, is_subscribed FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    current_month_str = datetime.utcnow().strftime('%Y-%m')
+    monthly_query_count = user['monthly_query_count']
+    
+    # Reset monthly count if it's a new month
+    if user['last_query_month'] != current_month_str:
+        monthly_query_count = 0
+        # No need to update last_query_month here yet, will be updated after successful query or if limit hit
+
+    if not user['is_subscribed'] and monthly_query_count >= 20:
+        # Update last_query_month even if limit is hit, to ensure reset logic works next month
+        cursor.execute("UPDATE users SET last_query_month = ? WHERE id = ?", (current_month_str, user_id))
+        db.commit()
+        cursor.close()
+        return jsonify({
+            "message": "You have used all your 20 free prayers for this month. Please upgrade for unlimited access.",
+            "limit_reached": True,
+            "remaining_free_queries": 0
+        }), 402 # 402 Payment Required
+
     data = request.get_json()
+
     print(f"Received data: {data}")
     user_prompt = data.get('prompt', '').strip() 
 
     if not user_prompt:
+        cursor.close()
         return jsonify({"error": "Prompt cannot be empty"}), 400
         
     god_response = generate_god_like_response(user_prompt, CONVERSATION_HISTORY)
@@ -126,8 +168,25 @@ def god_chat_endpoint():
     MAX_HISTORY_TURNS = 10 
     if len(CONVERSATION_HISTORY) > MAX_HISTORY_TURNS:
         CONVERSATION_HISTORY = CONVERSATION_HISTORY[-MAX_HISTORY_TURNS:]
+
+    # Increment query count and update last query month
+    new_monthly_query_count = monthly_query_count + 1
+    cursor.execute("UPDATE users SET monthly_query_count = ?, last_query_month = ? WHERE id = ?",
+                   (new_monthly_query_count, current_month_str, user_id))
+    db.commit()
+    cursor.close()
+    
+    remaining_queries = None
+    if not user['is_subscribed']:
+        remaining_queries = 20 - new_monthly_query_count
+        if remaining_queries < 0: remaining_queries = 0 # Should not happen if limit check is correct
+
     print(f"God-like response: {god_response}")
-    return jsonify({"response": god_response})
+    response_data = {"response": god_response}
+    if remaining_queries is not None:
+        response_data["remaining_free_queries"] = remaining_queries
+    return jsonify(response_data)
+
 
 if __name__ == '__main__':
     create_schema_if_not_exists() 
